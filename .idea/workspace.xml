@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ChangeListManager">
+    <list default="true" id="89c11b7a-091e-4277-a8fa-c544bc910f07" name="Default Changelist" comment="" />
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="ProjectId" id="1YQj7eiD2iyKxBjTL6MMDRZ3iw6" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showExcludedFiles" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent">
+    <property name="RunOnceActivity.ShowReadmeOnStart" value="true" />
+    <property name="nodejs_interpreter_path.stuck_in_default_project" value="undefined stuck path" />
+    <property name="nodejs_npm_path_reset_for_default_project" value="true" />
+  </component>
+  <component name="ReplState" timestamp="1582895141724">{:repl-history {:ide [], :local [], :remote []}}</component>
+  <component name="RunManager" selected="Clojure REPL.REPL">
+    <configuration name="REPL" type="ClojureREPL" factoryName="Local" activateToolWindowBeforeRun="false">
+      <module name="clj-asn" />
+      <setting name="replType" value="NREPL" />
+      <setting name="execution" value="LEININGEN" />
+      <setting name="jvmArgs" value="" />
+      <setting name="parameters" value="" />
+      <setting name="workingDir" value="$PROJECT_DIR$" />
+      <setting name="profiles" value="" />
+      <setting name="aliases" value="" />
+      <setting name="fixLineNumbers" value="false" />
+      <method v="2" />
+    </configuration>
+    <configuration default="true" type="ClojureREPL" factoryName="Local" activateToolWindowBeforeRun="false">
+      <setting name="replType" value="NREPL" />
+      <setting name="execution" value="LEININGEN" />
+      <module name="" />
+      <setting name="jvmArgs" value="" />
+      <setting name="parameters" value="" />
+      <setting name="workingDir" value="" />
+      <setting name="profiles" value="" />
+      <setting name="aliases" value="" />
+      <setting name="fixLineNumbers" value="false" />
+      <method v="2" />
+    </configuration>
+    <configuration default="true" type="ClojureREPL" factoryName="Remote" activateToolWindowBeforeRun="false">
+      <setting name="host" value="" />
+      <setting name="port" value="0" />
+      <setting name="replType" value="SOCKET" />
+      <setting name="configType" value="SPECIFY" />
+      <setting name="fixLineNumbers" value="false" />
+      <module name="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="clj-asn.core" type="ClojureScriptRunConfiguration" factoryName="Clojure Script" temporary="true">
+      <module name="clj-asn" />
+      <setting name="path" value="" />
+      <setting name="namespace" value="clj-asn.core" />
+      <setting name="execution" value="INTELLIJ" />
+      <setting name="profiles" value="" />
+      <setting name="aliases" value="" />
+      <setting name="vmparams" value="" />
+      <setting name="params" value="" />
+      <setting name="workDir" value="$PROJECT_DIR$" />
+      <method v="2" />
+    </configuration>
+    <list>
+      <item itemvalue="Clojure Application.clj-asn.core" />
+      <item itemvalue="Clojure REPL.REPL" />
+    </list>
+    <recent_temporary>
+      <list>
+        <item itemvalue="Clojure Application.clj-asn.core" />
+      </list>
+    </recent_temporary>
+  </component>
+  <component name="SvnConfiguration">
+    <configuration />
+  </component>
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="89c11b7a-091e-4277-a8fa-c544bc910f07" name="Default Changelist" comment="" />
+      <created>1582881545695</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1582881545695</updated>
+    </task>
+    <servers />
+  </component>
+  <component name="WindowStateProjectService">
+    <state x="416" y="153" key="#com.intellij.execution.impl.EditConfigurationsDialog" timestamp="1582893312633">
+      <screen x="0" y="0" width="1920" height="1080" />
+    </state>
+    <state x="416" y="153" key="#com.intellij.execution.impl.EditConfigurationsDialog/0.0.1920.1080/1920.0.1920.1080@0.0.1920.1080" timestamp="1582893312633" />
+    <state width="906" height="262" key="GridCell.Tab.0.bottom" timestamp="1582893295021">
+      <screen x="0" y="0" width="1920" height="1080" />
+    </state>
+    <state width="906" height="262" key="GridCell.Tab.0.bottom/0.0.1920.1080/1920.0.1920.1080@0.0.1920.1080" timestamp="1582893295021" />
+    <state width="906" height="262" key="GridCell.Tab.0.center" timestamp="1582893295021">
+      <screen x="0" y="0" width="1920" height="1080" />
+    </state>
+    <state width="906" height="262" key="GridCell.Tab.0.center/0.0.1920.1080/1920.0.1920.1080@0.0.1920.1080" timestamp="1582893295021" />
+    <state width="906" height="262" key="GridCell.Tab.0.left" timestamp="1582893295021">
+      <screen x="0" y="0" width="1920" height="1080" />
+    </state>
+    <state width="906" height="262" key="GridCell.Tab.0.left/0.0.1920.1080/1920.0.1920.1080@0.0.1920.1080" timestamp="1582893295021" />
+    <state width="906" height="262" key="GridCell.Tab.0.right" timestamp="1582893295021">
+      <screen x="0" y="0" width="1920" height="1080" />
+    </state>
+    <state width="906" height="262" key="GridCell.Tab.0.right/0.0.1920.1080/1920.0.1920.1080@0.0.1920.1080" timestamp="1582893295021" />
+    <state x="144" y="239" key="run.anything.popup" timestamp="1582885950892">
+      <screen x="0" y="0" width="1920" height="1080" />
+    </state>
+    <state x="144" y="239" key="run.anything.popup/0.0.1920.1080/1920.0.1920.1080@0.0.1920.1080" timestamp="1582885950892" />
+  </component>
+</project>

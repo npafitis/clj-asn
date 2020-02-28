@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="Leiningen: clope:1">
+    <CLASSES>
+      <root url="jar://$MAVEN_REPOSITORY$/clope/clope/1/clope-1.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>
