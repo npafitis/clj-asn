@@ -1,10 +1,12 @@
 (ns clj-asn.core
   (:require [clope.core :as clp]
             [clj-asn.utils :as utils]
-            [clojure.spec.alpha :as spec])
-  (:import (clope.impl Rope)))
+            [clojure.spec.alpha :as s])
+  (:import (clope.impl Rope)
+           (java.nio ByteBuffer)))
 
-(declare create-input-stream)
+(declare create-input-stream
+         output-stream?)
 
 (def tag
   {::end-of-content    2r00000000
@@ -141,14 +143,14 @@
   (write-relative-oid-iri [this value])
   (write-tag [this t tc form])
   (write-length [this length])
-  (write [this value] [this bytes off size])
-  )
+  (write [this value] [this bs off size])
+  (to-bytes [this]))
 
 (defrecord AsnOutputStream [rope]
   IAsnOutputStream
   (write-boolean [^AsnOutputStream this
                   value]
-    {:pre [(spec/valid? boolean? value)]}
+    {:pre [(s/valid? boolean? value)]}
     (-> this
         (write-tag ::universal ::primitive ::boolean)))
 
@@ -388,7 +390,7 @@
 
   (write-length [^AsnOutputStream this
                  length]
-    {:pre [(spec/valid? integer? length)]}
+    {:pre [(s/valid? pos-int? length)]}
     (if (= length ::indefinite-length)
       (write this 0x80)                                     ;write 0x80
       (if (< length 0x80)
@@ -397,16 +399,38 @@
       ))
 
   (write [^AsnOutputStream this value]
-    {:pre [(or (spec/valid? integer? value)
-               (spec/valid? bytes? value)
-               (spec/valid? string? value)
-               (spec/valid? boolean? value)
-               (spec/valid? utils/rope? value))]}
+    {:pre [(or (s/valid? integer? value)
+               (s/valid? bytes? value)
+               (s/valid? string? value)
+               (s/valid? boolean? value)
+               (s/valid? utils/rope? value))]}
     (create-input-stream this (cond (integer? value) (utils/wrap-int value)
                                     (bytes? value) (clp/wrap value)
                                     (string? value) (clp/wrap (.getBytes value))
                                     (boolean? value) (utils/wrap-int (boolean-value value))
-                                    (utils/rope? value) value))))
+                                    (utils/rope? value) value)))
+  (write [^AsnOutputStream this bs off size]
+    {:pre [(s/valid? bytes? bs)
+           (s/valid? pos-int? off)
+           (s/valid? pos-int? size)
+           (s/valid? (utils/in-bounds-pred bs)
+                     (+ off size))]}
+    (create-input-stream this (clp/subr (clp/wrap (byte-array bs))
+                                        off
+                                        (+ off size))))
+  (to-bytes [this]
+    (when-let [rope (:rope this)]
+      (let [bb (ByteBuffer/allocate (clp/size rope))
+            bb-put (fn [^ByteBuffer buffer ^bytes array] (.put buffer array))]
+        (not (nil? rope))
+        (reduce bb-put bb rope)
+        (let [remaining (.remaining bb)
+              arr (byte-array remaining)]
+          (.get bb arr)
+          arr)))))
+
+(defn output-stream? [x]
+  (instance? AsnOutputStream x))
 
 
 (defn create-input-stream

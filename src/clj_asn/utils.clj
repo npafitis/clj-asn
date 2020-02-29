@@ -1,5 +1,5 @@
 (ns clj-asn.utils
-  (:require [clojure.spec.alpha :as spec]
+  (:require [clojure.spec.alpha :as s]
             [clojure.pprint :as pprint]
             [clope.core :as clp])
   (:import (clope.impl Rope)))
@@ -13,7 +13,7 @@
     read-string))
 
 (defn int-to-byte-array [value]
-  {:pre [(spec/valid? integer? value)]}
+  {:pre [(s/valid? integer? value)]}
   (.toByteArray (BigInteger. (pr-str value))))
 
 (defn print-binary [number]
@@ -24,3 +24,8 @@
 
 (defn rope? [x]
   (instance? Rope x))
+
+(defn in-bounds-pred [bs]
+  {:pre [(s/valid? bytes? bs)]}
+  (fn [b]
+    (< b (count bs))))
