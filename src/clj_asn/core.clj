@@ -1,45 +1,50 @@
 (ns clj-asn.core
-  (:require [clope.core :as clp]))
+  (:require [clope.core :as clp]
+            [clj-asn.utils :as utils]
+            [clojure.spec.alpha :as spec])
+  (:import (clope.impl Rope)))
+
+(declare create-input-stream)
 
 (def tag
-  {::end-of-content    0
-   ::boolean           1
-   ::integer           2
-   ::bit-sting         3
-   ::octet-string      4
-   ::null              5
-   ::object-identifier 6
-   ::object-descriptor 7
-   ::external          8
-   ::real              9
-   ::enumerated        10
-   ::embedded-pdv      11
-   ::utf8-string       12
-   ::relative-oid      13
-   ::time              14
-   ::sequence          16
-   ::set               17
-   ::numeric-string    18
-   ::printable-string  19
-   ::t61-string        20
-   ::videotex-string   21
-   ::ia5:string        22
-   ::utc-time          23
-   ::generalized-time  24
-   ::graphic-string    25
-   ::visible-string    26
-   ::general-string    27
-   ::universal-string  28
-   ::character-string  29
-   ::bmp-string        30
-   ::date              31
-   ::time-of-day       32
-   ::date-time         33
-   ::duration          34
-   ::oid-iri           35
-   ::relative-oid-iri  36})
+  {::end-of-content    2r00000000
+   ::boolean           2r00000001
+   ::integer           2r00000010
+   ::bit-sting         2r00000011
+   ::octet-string      2r00000100
+   ::null              2r00000101
+   ::object-identifier 2r00000110
+   ::object-descriptor 2r00000111
+   ::external          2r00001000
+   ::real              2r00001001
+   ::enumerated        2r00001010
+   ::embedded-pdv      2r00001011
+   ::utf8-string       2r00001100
+   ::relative-oid      2r00001101
+   ::time              2r00001110
+   ::sequence          2r00010000
+   ::set               2r00010001
+   ::numeric-string    2r00010010
+   ::printable-string  2r00010011
+   ::t61-string        2r00010100
+   ::videotex-string   2r00010101
+   ::ia5:string        2r00010110
+   ::utc-time          2r00010111
+   ::generalized-time  2r00011000
+   ::graphic-string    2r00011001
+   ::visible-string    2r00011010
+   ::general-string    2r00011011
+   ::universal-string  2r00011100
+   ::character-string  2r00011101
+   ::bmp-string        2r00011110
+   ::date              2r0001111100011111
+   ::time-of-day       2r0001111100100000
+   ::date-time         2r0001111100100001
+   ::duration          2r0001111100100010
+   ::oid-iri           2r0001111100100011
+   ::relative-oid-iri  2r0001111100100100})
 
-(def tag-encoding
+(def tag-encoding-map
   {::end-of-content    ::primitive
    ::boolean           ::primitive
    ::integer           ::primitive
@@ -78,172 +83,334 @@
    ::relative-oid-iri  ::primitive})
 
 (def tag-class
-  {::universal        0
-   ::application      1
-   ::context-specific 2
-   ::private          3})
+  {::universal        2r00000000
+   ::application      2r01000000
+   ::context-specific 2r10000000
+   ::private          2r11000000})
 
-(def value-encoding
+(def form
   {::both        -1
-   ::primitive   0
-   ::constructed 1})
+   ::primitive   2r00000000
+   ::constructed 2r01000000})
 
-(defprotocol IAsnInputStream
+(def boolean-value
+  {false 0
+   true  1})
+
+(defn byte-size [number]
+  (count (utils/int-to-byte-array number)))
+
+(defn shift-octet [number t]
+  (if (> t 30)
+    (bit-shift-left number 8)
+    number))
+
+(defprotocol IAsnOutputStream
   (write-boolean [this value])
   (write-integer [this value])
-  (write-bit-string [this value] [this value primitive?])
-  (write-octet-string [this value] [this value primitive?])
+  (write-bit-string [this value] [this value form])
+  (write-octet-string [this value] [this value form])
   (write-null [this value])
   (write-object-identifier [this value])
-  (write-object-descriptor [this value] [this value primitive?])
+  (write-object-descriptor [this value] [this value form])
   (write-external [this value])
   (write-real [this value])
   (write-enumerated [this value])
   (write-embedded-pdv [this value])
-  (write-utf8-string [this value] [this value primitive?])
+  (write-utf8-string [this value] [this value form])
   (write-relative-oid [this value])
   (write-time [this value])
   (write-sequence [this value])
   (write-set [this value])
-  (write-numeric-string [this value] [this value primitive?])
-  (write-printable-string [this value] [this value primitive?])
-  (write-t61-string [this value] [this value primitive?])
-  (write-videotex-string [this value] [this value primitive?])
-  (write-ia5-string [this value] [this value primitive?])
-  (write-utc-time [this value] [this value primitive?])
-  (write-generalized-time [this value] [this value primitive?])
-  (write-graphic-string [this value] [this value primitive?])
-  (write-universal-string [this value] [this value primitive?])
-  (write-character-string [this value] [this value primitive?])
-  (write-bmp-string [this value] [this value primitive?])
+  (write-numeric-string [this value] [this value form])
+  (write-printable-string [this value] [this value form])
+  (write-t61-string [this value] [this value form])
+  (write-videotex-string [this value] [this value form])
+  (write-ia5-string [this value] [this value form])
+  (write-utc-time [this value] [this value form])
+  (write-generalized-time [this value] [this value form])
+  (write-graphic-string [this value] [this value form])
+  (write-universal-string [this value] [this value form])
+  (write-character-string [this value] [this value form])
+  (write-bmp-string [this value] [this value form])
   (write-date [this value])
   (write-time-of-day [this value])
   (write-date-time [this value])
   (write-duration [this value])
   (write-oid-iri [this value])
   (write-relative-oid-iri [this value])
-
-  (write-tag [this t tc primitive?])
-
+  (write-tag [this t tc form])
+  (write-length [this length])
+  (write [this value] [this bytes off size])
   )
 
-(defrecord AsnInputStream [rope]
-  IAsnInputStream
-  (write-boolean [this value] nil)
+(defrecord AsnOutputStream [rope]
+  IAsnOutputStream
+  (write-boolean [^AsnOutputStream this
+                  value]
+    {:pre [(spec/valid? boolean? value)]}
+    (-> this
+        (write-tag ::universal ::primitive ::boolean)))
 
-  (write-integer [this value] nil)
+  (write-integer [^AsnOutputStream this
+                  value]
+    (-> this
+        (write-tag ::universal ::primitive ::integer)))
 
-  (write-bit-string [this value]
-    (write-bit-string this value true))
+  (write-bit-string [^AsnOutputStream this
+                     value]
+    (write-bit-string this value ::primitive))
 
-  (write-bit-string [this value primitive?] nil)
+  (write-bit-string [^AsnOutputStream this
+                     value form]
+    (-> this
+        (write-tag ::universal form ::bit-sting)))
 
-  (write-octet-string [this value]
-    (write-octet-string this value true))
+  (write-octet-string [^AsnOutputStream this
+                       value]
+    (write-octet-string this value ::primitive))
 
-  (write-octet-string [this value primitive?] nil)
+  (write-octet-string [^AsnOutputStream this
+                       value form]
+    (-> this
+        (write-tag ::universal form ::octet-string)))
 
-  (write-null [this value] nil)
+  (write-null [^AsnOutputStream this
+               value]
+    (-> this
+        (write-tag ::universal ::primitive ::null)))
 
-  (write-object-identifier [this value] nil)
+  (write-object-identifier [^AsnOutputStream this
+                            value]
+    (-> this
+        (write-tag ::universal ::primitive ::object-identifier)))
 
-  (write-object-descriptor [this value]
-    (write-object-descriptor this value true))
+  (write-object-descriptor [^AsnOutputStream this
+                            value]
+    (write-object-descriptor this value ::primitive))
 
-  (write-object-descriptor [this value primitive?] nil)
+  (write-object-descriptor [^AsnOutputStream this
+                            value form]
+    (-> this
+        (write-tag ::universal form ::object-descriptor)))
 
-  (write-external [this value] nil)
+  (write-external [^AsnOutputStream this
+                   value]
+    (-> this
+        (write-tag ::universal ::primitive ::external)))
 
-  (write-real [this value] nil)
+  (write-real [^AsnOutputStream this
+               value]
+    (-> this
+        (write-tag ::universal ::primitive ::real)))
 
-  (write-enumerated [this value] nil)
+  (write-enumerated [^AsnOutputStream this
+                     value]
+    (-> this
+        (write-tag ::universal ::primitive ::enumerated)))
 
-  (write-embedded-pdv [this value] nil)
+  (write-embedded-pdv [^AsnOutputStream this
+                       value]
+    (-> this
+        (write-tag ::universal ::primitive ::embedded-pdv)))
 
-  (write-utf8-string [this value]
-    (write-utf8-string this value true))
+  (write-utf8-string [^AsnOutputStream this
+                      value]
+    (write-utf8-string this value ::primitive))
 
-  (write-utf8-string [this value primitive?] nil)
+  (write-utf8-string [^AsnOutputStream this
+                      value form]
+    (-> this
+        (write-tag ::universal form ::utf8-string)))
 
-  (write-relative-oid [this value] nil)
+  (write-relative-oid [^AsnOutputStream this
+                       value]
+    (-> this
+        (write-tag ::universal ::primitive ::relative-oid)))
 
-  (write-time [this value] nil)
+  (write-time [^AsnOutputStream this
+               value]
+    (-> this
+        (write-tag ::universal ::primitive ::time)))
 
-  (write-sequence [this value] nil)
+  (write-sequence [^AsnOutputStream this
+                   value]
+    (-> this
+        (write-tag ::universal ::primitive ::sequence)))
 
-  (write-set [this value] nil)
+  (write-set [^AsnOutputStream this
+              value]
+    (-> this
+        (write-tag ::universal ::primitive ::set)))
 
-  (write-numeric-string [this value]
-    (write-numeric-string this value true))
+  (write-numeric-string [^AsnOutputStream this
+                         value]
+    (write-numeric-string this value ::primitive))
 
-  (write-numeric-string [this value primitive?] nil)
+  (write-numeric-string [^AsnOutputStream this
+                         value form]
+    (-> this
+        (write-tag ::universal form ::numeric-string)))
 
-  (write-printable-string [this value]
-    (write-printable-string this value true))
+  (write-printable-string [^AsnOutputStream this
+                           value]
+    (write-printable-string this value ::primitive))
 
-  (write-printable-string [this value primitive?] nil)
+  (write-printable-string [^AsnOutputStream this
+                           value form]
+    (-> this
+        (write-tag ::universal form ::printable-string)))
 
-  (write-t61-string [this value]
-    (write-t61-string this value true))
+  (write-t61-string [^AsnOutputStream this
+                     value]
+    (write-t61-string this value ::primitive))
 
-  (write-t61-string [this value primitive?] nil)
+  (write-t61-string [^AsnOutputStream this
+                     value form]
+    (-> this
+        (write-tag ::universal form ::t61-string)))
 
-  (write-videotex-string [this value]
-    (write-videotex-string this value true))
+  (write-videotex-string [^AsnOutputStream this
+                          value]
+    (write-videotex-string this value ::primitive))
 
-  (write-videotex-string [this value primitive?] nil)
+  (write-videotex-string [^AsnOutputStream this
+                          value form]
+    (-> this
+        (write-tag ::universal form ::videotex-string)))
 
-  (write-ia5-string [this value]
-    (write-ia5-string this value true))
+  (write-ia5-string [^AsnOutputStream this
+                     value]
+    (write-ia5-string this value ::primitive))
 
-  (write-ia5-string [this value primitive?] nil)
+  (write-ia5-string [^AsnOutputStream this
+                     value form]
+    (-> this
+        (write-tag ::universal form ::ia5-string)))
 
-  (write-utc-time [this value]
-    (write-utc-time this value true))
+  (write-utc-time [^AsnOutputStream this
+                   value]
+    (write-utc-time this value ::primitive))
 
-  (write-utc-time [this value primitive?] nil)
+  (write-utc-time [^AsnOutputStream this
+                   value form]
+    (-> this
+        (write-tag ::universal form ::utc-time)))
 
-  (write-generalized-time [this value]
-    (write-generalized-time this value true))
+  (write-generalized-time [^AsnOutputStream this
+                           value]
+    (write-generalized-time this value ::primitive))
 
-  (write-generalized-time [this value primitive?] nil)
+  (write-generalized-time [^AsnOutputStream this
+                           value form]
+    (-> this
+        (write-tag ::universal form ::generalized-time)))
 
-  (write-graphic-string [this value]
-    (write-graphic-string this value true))
+  (write-graphic-string [^AsnOutputStream this
+                         value]
+    (write-graphic-string this value ::primitive))
 
-  (write-graphic-string [this value primitive?] nil)
+  (write-graphic-string [^AsnOutputStream this
+                         value form]
+    (-> this
+        (write-tag ::universal form ::graphic-string)))
 
-  (write-universal-string [this value]
-    (write-universal-string this value true))
+  (write-universal-string [^AsnOutputStream this
+                           value]
+    (write-universal-string this value ::primitive))
 
-  (write-universal-string [this value primitive?] nil)
+  (write-universal-string [^AsnOutputStream this
+                           value form]
+    (-> this
+        (write-tag ::universal form ::universal-string)))
 
-  (write-character-string [this value]
-    (write-character-string this value true))
+  (write-character-string [^AsnOutputStream this
+                           value]
+    (write-character-string this value ::primitive))
 
-  (write-character-string [this value primitive?] nil)
+  (write-character-string [^AsnOutputStream this
+                           value form]
+    (-> this
+        (write-tag ::universal form ::character-string)))
 
-  (write-bmp-string [this value]
-    (write-bmp-string this value true))
+  (write-bmp-string [^AsnOutputStream this
+                     value]
+    (write-bmp-string this value ::primitive))
 
-  (write-bmp-string [this value primitive?] nil)
+  (write-bmp-string [^AsnOutputStream this
+                     value form]
+    (-> this
+        (write-tag ::universal form ::bmp-string)))
 
-  (write-date [this value] nil)
+  (write-date [^AsnOutputStream this
+               value]
+    (-> this
+        (write-tag ::universal ::primitive ::date)))
 
-  (write-time-of-day [this value] nil)
+  (write-time-of-day [^AsnOutputStream this
+                      value]
+    (-> this
+        (write-tag ::universal ::primitive ::time-of-day)))
 
-  (write-date-time [this value] nil)
+  (write-date-time [^AsnOutputStream this
+                    value]
+    (-> this
+        (write-tag ::universal ::primitive ::date-time)))
 
-  (write-duration [this value] nil)
+  (write-duration [^AsnOutputStream this
+                   value]
+    (-> this
+        (write-tag ::universal ::primitive ::duration)))
 
-  (write-oid-iri [this value] nil)
+  (write-oid-iri [^AsnOutputStream this
+                  value]
+    (-> this
+        (write-tag ::universal ::primitive ::oid-iri)))
 
-  (write-relative-oid-iri [this value] nil)
+  (write-relative-oid-iri [^AsnOutputStream this
+                           value]
+    (-> this
+        (write-tag ::universal ::primitive ::relative-oid-iri)))
 
-  (write-tag [this t tc primitive?]
-    (let [rope (:rope this)
-          tag-rope (clp/wrap ())])))
+  (write-tag [^AsnOutputStream this
+              tc f t]
+    (let [tag-encoding (tag t)
+          tag-class-encoding (shift-octet (tag-class tc) tag-encoding)
+          form-encoding (shift-octet (form f) tag-encoding)
+          rope (clp/wrap
+                 (utils/int-to-byte-array
+                   (bit-or tag-encoding
+                           tag-class-encoding
+                           form-encoding)))]
+      (write this (if (< tag-encoding 30)
+                    (clp/subr rope (dec (clp/size rope)))
+                    (clp/subr rope (dec (dec (clp/size rope))))))))
+
+  (write-length [^AsnOutputStream this
+                 length]
+    {:pre [(spec/valid? integer? length)]}
+    (if (= length ::indefinite-length)
+      (write this 0x80)                                     ;write 0x80
+      (if (< length 0x80)
+        (write this length)
+        this)                                               ;; write length bigger than a byte
+      ))
+
+  (write [^AsnOutputStream this value]
+    {:pre [(or (spec/valid? integer? value)
+               (spec/valid? bytes? value)
+               (spec/valid? string? value)
+               (spec/valid? boolean? value)
+               (spec/valid? utils/rope? value))]}
+    (create-input-stream this (cond (integer? value) (utils/wrap-int value)
+                                    (bytes? value) (clp/wrap value)
+                                    (string? value) (clp/wrap (.getBytes value))
+                                    (boolean? value) (utils/wrap-int (boolean-value value))
+                                    (utils/rope? value) value))))
 
 
-(defn -main [& args]
-  (prn "Hello World"))
+(defn create-input-stream
+  ([]
+   (->AsnOutputStream nil))
+  ([^AsnOutputStream output-stream ^Rope rope]
+   (->AsnOutputStream (clp/join (:rope output-stream) rope))))
