@@ -5,6 +5,9 @@
   (:import (clope.impl Rope)
            (java.nio ByteBuffer)))
 
+(defn output-stream? [x]
+  (instance? AsnOutputStream x))
+
 (declare create-input-stream
          output-stream?)
 
@@ -110,7 +113,7 @@
 (defprotocol IAsnOutputStream
   (write-boolean [this value])
   (write-integer [this value])
-  (write-bit-string [this value] [this value form])
+  (write-bit-string [this value indefinite?] [this value form indefinite?])
   (write-octet-string [this value] [this value form])
   (write-null [this value])
   (write-object-identifier [this value])
@@ -142,7 +145,8 @@
   (write-oid-iri [this value])
   (write-relative-oid-iri [this value])
   (write-tag [this t tc form])
-  (write-length [this length])
+  (write-length [this length] [this])
+  (write-length-end [this length] [this])
   (write [this value] [this bs off size])
   (to-bytes [this]))
 
@@ -152,21 +156,38 @@
                   value]
     {:pre [(s/valid? boolean? value)]}
     (-> this
-        (write-tag ::universal ::primitive ::boolean)))
+        (write-tag ::universal ::primitive ::boolean)
+        (write-length 0x01)
+        (write value)))
 
   (write-integer [^AsnOutputStream this
                   value]
-    (-> this
-        (write-tag ::universal ::primitive ::integer)))
+    {:pre [(s/valid? string? value)]}
+    (let [bs (utils/int-to-byte-array value)]
+      (-> this
+          (write-tag ::universal ::primitive ::integer)
+          (write-length (count bs))
+          (write bs))))
 
   (write-bit-string [^AsnOutputStream this
-                     value]
-    (write-bit-string this value ::primitive))
+                     value indefinite?]
+    {:pre [(s/valid? string? value)]}
+    (write-bit-string this value ::primitive indefinite?))
 
   (write-bit-string [^AsnOutputStream this
-                     value form]
-    (-> this
-        (write-tag ::universal form ::bit-sting)))
+                     value form indefinite?]
+    {:pre [(s/valid? string? value)]}
+    (let [bs (.getBytes value)
+          that (write-tag this ::universal form ::bit-sting)]
+      (if indefinite?
+        (-> that
+            (write 0)
+            (write bs)
+            (write 0)
+            (write 0))
+        (-> that
+            (write-length (count bs))
+            (write bs)))))
 
   (write-octet-string [^AsnOutputStream this
                        value]
@@ -390,13 +411,19 @@
 
   (write-length [^AsnOutputStream this
                  length]
-    {:pre [(s/valid? pos-int? length)]}
-    (if (= length ::indefinite-length)
-      (write this 0x80)                                     ;write 0x80
-      (if (< length 0x80)
-        (write this length)
-        this)                                               ;; write length bigger than a byte
-      ))
+    {:pre [(s/valid? pos-int? length)
+           (not (= length 0x80))]}
+    (if (< length 0x80)
+      (write this length)
+      ;; TODO: Check if this case is correct (Definite Long)
+      (-> this
+          (write (bit-or 2r10000000 (utils/length-octets length)))
+          (write length))))
+
+
+  (write-length                                             ;; Writing indefinite length
+    [^AsnOutputStream this]
+    (write this 2r10000000))
 
   (write [^AsnOutputStream this value]
     {:pre [(or (s/valid? integer? value)
@@ -409,6 +436,7 @@
                                     (string? value) (clp/wrap (.getBytes value))
                                     (boolean? value) (utils/wrap-int (boolean-value value))
                                     (utils/rope? value) value)))
+
   (write [^AsnOutputStream this bs off size]
     {:pre [(s/valid? bytes? bs)
            (s/valid? pos-int? off)
@@ -428,10 +456,6 @@
               arr (byte-array remaining)]
           (.get bb arr)
           arr)))))
-
-(defn output-stream? [x]
-  (instance? AsnOutputStream x))
-
 
 (defn create-input-stream
   ([]
