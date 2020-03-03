@@ -113,8 +113,8 @@
 (defprotocol IAsnOutputStream
   (write-boolean [this value])
   (write-integer [this value])
-  (write-bit-string [this value indefinite?] [this value form indefinite?])
-  (write-octet-string [this value] [this value form])
+  (write-bit-string [this value] [this value indefinite?] [this value form indefinite?])
+  (write-octet-string [this value] [this value indefinite?] [this value form indefinite?])
   (write-null [this value])
   (write-object-identifier [this value])
   (write-object-descriptor [this value] [this value form])
@@ -148,6 +148,7 @@
   (write-length [this length] [this])
   (write-length-end [this length] [this])
   (write [this value] [this bs off size])
+  (write-data [this bs indefinite?])
   (to-bytes [this]))
 
 (defrecord AsnOutputStream [rope]
@@ -166,8 +167,12 @@
     (let [bs (utils/int-to-byte-array value)]
       (-> this
           (write-tag ::universal ::primitive ::integer)
-          (write-length (count bs))
-          (write bs))))
+          (write-data bs false))))
+
+  (write-bit-string [^AsnOutputStream this
+                     value]
+    {:pre [(s/valid? string? value)]}
+    (write-bit-string this value ::primitive false))
 
   (write-bit-string [^AsnOutputStream this
                      value indefinite?]
@@ -177,26 +182,25 @@
   (write-bit-string [^AsnOutputStream this
                      value form indefinite?]
     {:pre [(s/valid? string? value)]}
-    (let [bs (.getBytes value)
-          that (write-tag this ::universal form ::bit-sting)]
-      (if indefinite?
-        (-> that
-            (write 0)
-            (write bs)
-            (write 0)
-            (write 0))
-        (-> that
-            (write-length (count bs))
-            (write bs)))))
+    (let [bs (.getBytes value)]
+      (-> this
+          (write-tag ::universal form ::bit-sting)
+          (write-data bs indefinite?))))
 
   (write-octet-string [^AsnOutputStream this
                        value]
-    (write-octet-string this value ::primitive))
+    (write-octet-string this value ::primitive false))
 
   (write-octet-string [^AsnOutputStream this
-                       value form]
-    (-> this
-        (write-tag ::universal form ::octet-string)))
+                       value indefinite?]
+    (write-octet-string this value ::primitive indefinite?))
+
+  (write-octet-string [^AsnOutputStream this
+                       value form indefinite?]
+    (let [bs (.getBytes value)]
+      (-> this
+          (write-tag ::universal form ::octet-string)
+          (write-data bs indefinite?))))
 
   (write-null [^AsnOutputStream this
                value]
@@ -446,6 +450,18 @@
     (create-input-stream this (clp/subr (clp/wrap (byte-array bs))
                                         off
                                         (+ off size))))
+
+  (write-data [^AsnOutputStream this bs indefinite?]
+    (if indefinite?
+      (-> this
+          (write-length)
+          (write bs)
+          (write 0)
+          (write 0))
+      (-> this
+          (write-length (count bs))
+          (write bs))))
+
   (to-bytes [this]
     (when-let [rope (:rope this)]
       (let [bb (ByteBuffer/allocate (clp/size rope))
