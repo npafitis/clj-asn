@@ -30,6 +30,9 @@
     <orderEntry type="library" name="Leiningen: com.google.protobuf/protobuf-java:3.0.2" level="project" />
     <orderEntry type="library" name="Leiningen: com.googlecode.json-simple/json-simple:1.1.1" level="project" />
     <orderEntry type="library" name="Leiningen: commons-codec:1.10" level="project" />
+    <orderEntry type="library" name="Leiningen: funcool/octet:1.1.2" level="project" />
+    <orderEntry type="library" name="Leiningen: io.netty/netty-buffer:4.1.30.Final" level="project" />
+    <orderEntry type="library" name="Leiningen: io.netty/netty-common:4.1.30.Final" level="project" />
     <orderEntry type="library" name="Leiningen: nrepl:0.6.0" level="project" />
     <orderEntry type="library" name="Leiningen: org.checkerframework/checker-qual:2.0.0" level="project" />
     <orderEntry type="library" name="Leiningen: org.clojure/clojure:1.10.0" level="project" />
