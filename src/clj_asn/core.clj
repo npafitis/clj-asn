@@ -149,7 +149,8 @@
   (write-length-end [this length] [this])
   (write [this value] [this bs off size])
   (write-data [this bs indefinite?])
-  (to-bytes [this]))
+  (to-bytes [this])
+  (to-byte-buffer [this]))
 
 (defrecord AsnOutputStream [rope]
   IAsnOutputStream
@@ -463,15 +464,19 @@
           (write bs))))
 
   (to-bytes [this]
+    (let [bb (to-byte-buffer this)]
+      (let [remaining (.remaining bb)
+            arr (byte-array remaining)]
+        (.get bb arr)
+        arr)))
+
+  (to-byte-buffer [this]
     (when-let [rope (:rope this)]
       (let [bb (ByteBuffer/allocate (clp/size rope))
             bb-put (fn [^ByteBuffer buffer ^bytes array] (.put buffer array))]
         (not (nil? rope))
         (reduce bb-put bb rope)
-        (let [remaining (.remaining bb)
-              arr (byte-array remaining)]
-          (.get bb arr)
-          arr)))))
+        bb))))
 
 (defn create-input-stream
   ([]
