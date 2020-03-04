@@ -1,28 +1,31 @@
 (ns clj-asn.utils
   (:require [clojure.spec.alpha :as s]
-            [clojure.pprint :as pprint]
-            [clope.core :as clp])
+            [clope.core :as clp]
+            [byte-streams :as bstr])
   (:import (clope.impl Rope)))
 
-(defn bytes->int [bytes]
-  "Converts a byte array into an integer."
-  (->>
-    bytes
-    (map (partial format "%02x"))
-    (apply (partial str "0x"))
-    read-string))
+(def boolean-value
+  {false 0
+   true  1})
 
-(defn int-to-byte-array [value]
+(defn num->byte-array [value]
   {:pre [(s/valid? integer? value)]}
   (.toByteArray (BigInteger. (pr-str value))))
 
-(defn print-binary [number]
-  (pprint/cl-format nil "2r~8,'0',B" number))
+(def byte-array-type (type (byte-array [])))
 
-(defn wrap-int [value]
-  (clp/wrap (if (>= value 128)
-              (int-to-byte-array value)
-              (byte-array [(byte value)]))))
+(bstr/def-conversion [Number byte-array-type]
+                     [x options]
+                     (num->byte-array x))
+
+(bstr/def-conversion [Boolean byte-array-type]
+                     [x options]
+                     (-> x
+                         (boolean-value)
+                         (num->byte-array)))
+
+(defn wrap [value]
+  (clp/wrap (bstr/to-byte-array value)))
 
 (defn rope? [x]
   (instance? Rope x))
@@ -31,9 +34,3 @@
   {:pre [(s/valid? bytes? bs)]}
   (fn [b]
     (< b (count bs))))
-
-(defn log2 [x]
-  (/ (Math/log x) (Math/log 2)))
-
-(defn length-octets [x]
-  (int (Math/ceil (/ (Math/ceil (log2 x)) 8))))

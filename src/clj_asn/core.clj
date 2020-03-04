@@ -1,12 +1,10 @@
 (ns clj-asn.core
   (:require [clope.core :as clp]
             [clj-asn.utils :as utils]
-            [clojure.spec.alpha :as s])
+            [clojure.spec.alpha :as s]
+            [byte-streams :as bstr])
   (:import (clope.impl Rope)
            (java.nio ByteBuffer)))
-
-(defn output-stream? [x]
-  (instance? AsnOutputStream x))
 
 (declare create-input-stream
          output-stream?)
@@ -98,13 +96,6 @@
    ::primitive   2r00000000
    ::constructed 2r01000000})
 
-(def boolean-value
-  {false 0
-   true  1})
-
-(defn byte-size [number]
-  (count (utils/int-to-byte-array number)))
-
 (defn shift-octet [number t]
   (if (> t 30)
     (bit-shift-left number 8)
@@ -148,7 +139,8 @@
   (write-length [this length] [this])
   (write-length-end [this length] [this])
   (write [this value] [this bs off size])
-  (to-bytes [this]))
+  (to-bytes [this])
+  (to-byte-buffer [this]))
 
 (defrecord AsnOutputStream [rope]
   IAsnOutputStream
@@ -163,7 +155,7 @@
   (write-integer [^AsnOutputStream this
                   value]
     {:pre [(s/valid? string? value)]}
-    (let [bs (utils/int-to-byte-array value)]
+    (let [bs (bstr/to-byte-array value)]
       (-> this
           (write-tag ::universal ::primitive ::integer)
           (write-length (count bs))
@@ -400,11 +392,9 @@
     (let [tag-encoding (tag t)
           tag-class-encoding (shift-octet (tag-class tc) tag-encoding)
           form-encoding (shift-octet (form f) tag-encoding)
-          rope (clp/wrap
-                 (utils/int-to-byte-array
-                   (bit-or tag-encoding
-                           tag-class-encoding
-                           form-encoding)))]
+          rope (utils/wrap (bit-or tag-encoding
+                                   tag-class-encoding
+                                   form-encoding))]
       (write this (if (< tag-encoding 30)
                     (clp/subr rope (dec (clp/size rope)))
                     (clp/subr rope (dec (dec (clp/size rope))))))))
@@ -417,7 +407,7 @@
       (write this length)
       ;; TODO: Check if this case is correct (Definite Long)
       (-> this
-          (write (bit-or 2r10000000 (utils/length-octets length)))
+          (write (bit-or 2r10000000 (count (bstr/to-byte-array length))))
           (write length))))
 
 
@@ -431,11 +421,8 @@
                (s/valid? string? value)
                (s/valid? boolean? value)
                (s/valid? utils/rope? value))]}
-    (create-input-stream this (cond (integer? value) (utils/wrap-int value)
-                                    (bytes? value) (clp/wrap value)
-                                    (string? value) (clp/wrap (.getBytes value))
-                                    (boolean? value) (utils/wrap-int (boolean-value value))
-                                    (utils/rope? value) value)))
+    (create-input-stream this (cond (utils/rope? value) value
+                                    :else (utils/wrap value))))
 
   (write [^AsnOutputStream this bs off size]
     {:pre [(s/valid? bytes? bs)
@@ -447,15 +434,20 @@
                                         off
                                         (+ off size))))
   (to-bytes [this]
-    (when-let [rope (:rope this)]
-      (let [bb (ByteBuffer/allocate (clp/size rope))
-            bb-put (fn [^ByteBuffer buffer ^bytes array] (.put buffer array))]
-        (not (nil? rope))
-        (reduce bb-put bb rope)
-        (let [remaining (.remaining bb)
-              arr (byte-array remaining)]
-          (.get bb arr)
-          arr)))))
+    (let [bb (to-byte-buffer this)]
+      (let [remaining (.remaining bb)
+            arr (byte-array remaining)]
+        (.get bb arr)
+        arr)))
+
+  (to-byte-buffer [this]
+    (let [bb (ByteBuffer/allocate (clp/size rope))
+          bb-put (fn [^ByteBuffer buffer ^bytes array] (.put buffer array))]
+      (reduce bb-put bb rope))))
+
+(bstr/def-conversion [AsnOutputStream ByteBuffer]
+                     [x]
+                     (to-byte-buffer x))
 
 (defn create-input-stream
   ([]
