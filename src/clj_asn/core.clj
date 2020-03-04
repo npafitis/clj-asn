@@ -441,7 +441,7 @@
         arr)))
 
   (to-byte-buffer [this]
-    (let [bb (ByteBuffer/allocate (clp/size rope))
+    (let [bb (ByteBuffer/allocate (clp/size (:rope this)))
           bb-put (fn [^ByteBuffer buffer ^bytes array] (.put buffer array))]
       (reduce bb-put bb rope))))
 
